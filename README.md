@@ -13,3 +13,34 @@ Hand gesture identification has various applications, including sign language re
 - Displays the finger count on the video feed in real-time
 - Supports various hand gestures, including open hand, fist, and different finger configurations
 
+## Installation
+
+To run the project locally, follow these steps:
+
+1. Clone the repository to your local machine:
+
+   ```bash
+   git clone https://github.com/2100031988/hand_gesture_identification.git
+
+2. pip install -r requirements.txt
+3. python main.py
+
+##Usage
+
+Once the script is running, it will open a window displaying the live video feed from your webcam. It will detect hand gestures and count the number of fingers extended in each hand.
+
+Extend your hand in front of the camera to see the detected hand landmarks and finger count.
+Try different hand gestures, such as open hand, fist, and various finger configurations, to observe the detection accuracy.
+
+##About the Author
+
+This project is developed by Sabyasachi Kumar. You can contact me at sabyasachikumar2@gmail.com.
+
+
+This README.md file provides an overview of the project, instructions for installation and usage, guidelines for contributing, licensing information, and information about the author.
+
+Copyright
+© 2024 Sabyasachi Kumar. All rights reserved.
+
+
+
