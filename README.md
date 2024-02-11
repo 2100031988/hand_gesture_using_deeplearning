@@ -29,9 +29,20 @@ To run the project locally, follow these steps:
    
    python main.py
 
-Usage
+
+## Usage
+
 Once the script is running, it will open a window displaying the live video feed from your webcam. It will detect hand gestures and count the number of fingers extended in each hand.
 
-Extend your hand in front of the camera to see the detected hand landmarks and finger count.
-Try different hand gestures, such as open hand, fist, and various finger configurations, to observe the detection accuracy.
+- Extend your hand in front of the camera to see the detected hand landmarks and finger count.
+- Try different hand gestures, such as open hand, fist, and various finger configurations, to observe the detection accuracy.
+
+## About the Author
+This project is developed by Sabyasachi Kumar. You can contact me at sabyasachikumar2@gmail.com.
+
+## License
+This project is licensed under the MIT License.
+
+## Copyright
+© 2024 Sabyasachi Kumar. All rights reserved.
 
