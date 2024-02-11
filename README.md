@@ -29,6 +29,11 @@ To run the project locally, follow these steps:
    
    python main.py
 
+## Output
+
+<img width="1440" alt="Screenshot 2024-02-11 at 7 37 56 PM" src="https://github.com/2100031988/hand_gesture_using_deeplearning/assets/110450040/12f82d3e-879b-49d3-a6f9-37b80d797be0">
+
+
 
 ## Usage
 
