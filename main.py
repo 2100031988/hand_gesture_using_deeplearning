@@ -1,108 +1,76 @@
 import cv2
-import numpy as np
-from sklearn.metrics import pairwise
+import mediapipe as mp
 
-accumulated_weight = 0.5
-roi_top = 20
-roi_bottom = 300
-roi_right = 300
-roi_left = 600
-shift = (roi_right, roi_top)
+# Initialize MediaPipe Hands module
+mp_hands = mp.solutions.hands
+hands = mp_hands.Hands()
 
-
-def calc_accum_avg(frame, background):
-    if background is None:
-        return frame.copy()
-
-    cv2.accumulateWeighted(frame, background.astype("float"), accumulated_weight)
-    return background
+# Initialize MediaPipe Drawing module for drawing landmarks
+mp_drawing = mp.solutions.drawing_utils
 
 
-def segment(frame, background, threshold=25):
-    diff = cv2.absdiff(background, frame)
-    _, thresh = cv2.threshold(diff, threshold, 255, cv2.THRESH_BINARY)
-    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+def count_fingers(hand_landmarks, frame_width, frame_height):
+    tip_ids = [4, 8, 12, 16, 20]  # Finger landmark indices
+    finger_count = 0
 
-    if len(contours) == 0:
-        return None
-    else:
-        hand_segment = max(contours, key=cv2.contourArea)
-        return (thresh, hand_segment)
+    # Thumb detection
+    if hand_landmarks.landmark[tip_ids[0]].x * frame_width < hand_landmarks.landmark[tip_ids[1]].x * frame_width:
+        finger_count += 1
 
+    # Other fingers detection
+    for id in range(1, 5):
+        if hand_landmarks.landmark[tip_ids[id]].y * frame_height < hand_landmarks.landmark[
+            tip_ids[id] - 2].y * frame_height:
+            finger_count += 1
 
-def count_fingers(thresh, hand_segment):
-    conv_hull = cv2.convexHull(hand_segment, returnPoints=False)
-    defects = cv2.convexityDefects(hand_segment, conv_hull)
+    # Check for fist (all fingers folded)
+    if finger_count == 0:
+        thumb_tip_y = hand_landmarks.landmark[4].y * frame_height
+        pinky_tip_y = hand_landmarks.landmark[20].y * frame_height
+        if thumb_tip_y > pinky_tip_y:
+            finger_count = 5  # All fingers folded, consider it as a fist
 
-    if defects is not None:
-        count = 0
-        fingerTips = []
-        for i in range(defects.shape[0]):
-            s, e, f, d = defects[i, 0]
-            start = tuple(hand_segment[s][0])
-            end = tuple(hand_segment[e][0])
-            far = tuple(hand_segment[f][0])
-
-            a = np.sqrt((end[0] - start[0]) ** 2 + (end[1] - start[1]) ** 2)
-            b = np.sqrt((far[0] - start[0]) ** 2 + (far[1] - start[1]) ** 2)
-            c = np.sqrt((end[0] - far[0]) ** 2 + (end[1] - far[1]) ** 2)
-
-            angle = np.arccos((b ** 2 + c ** 2 - a ** 2) / (2 * b * c))
-
-            if angle <= np.pi / 2:
-                count += 1
-                fingerTips.append(far)
-
-        return count, fingerTips, tuple(hand_segment[0][0])
-    else:
-        return 0, [], (0, 0)
+    return finger_count
 
 
-def real_time_feed():
-    background = None
-    cam = cv2.VideoCapture(0)
-    num_frames = 0
-    while True:
-        num_frames += 1
-        ret, frame = cam.read()
-        frame = cv2.flip(frame, 1)
-        frame_copy = frame.copy()
-        fingerTips = []
-        roi = frame[roi_top:roi_bottom, roi_right:roi_left]
-        gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-        gray = cv2.GaussianBlur(gray, (5, 5), 0)
+# Open a video capture object (0 for the default camera)
+cap = cv2.VideoCapture(0)
 
-        if num_frames <= 60:
-            background = calc_accum_avg(gray, background)
-            if num_frames <= 60:
-                cv2.putText(frame_copy, "WAIT! GETTING BACKGROUND AVG.", (200, 400), cv2.FONT_HERSHEY_SIMPLEX, 1,
-                            (0, 0, 255), 2)
-                cv2.imshow("Finger Count", frame_copy)
+while cap.isOpened():
+    ret, frame = cap.read()
 
-        else:
-            hand = segment(gray, background)
+    if not ret:
+        continue
 
-            if hand is not None:
-                thresholded, hand_segment = hand
-                res = cv2.drawContours(frame_copy, [hand_segment + (roi_right, roi_top)], -1, (255, 0, 0), 1)
-                fingers, fingerTips, centrePt = count_fingers(thresholded, hand_segment)
-                centrePt = tuple(map(sum, zip(centrePt, shift)))
-                cv2.putText(frame_copy, "Count = " + str(fingers), (100, 45), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0),
-                            2)
-                cv2.imshow("Thresholded", thresholded)
+    # Convert the frame to RGB format
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-        res = cv2.rectangle(frame_copy, (roi_left, roi_top), (roi_right, roi_bottom), (0, 0, 255), 5)
-        for tip in fingerTips:
-            tip = tuple(map(sum, zip(tip, shift)))
-            res = cv2.line(frame_copy, tip, centrePt, (0, 0, 255), 2)
-        cv2.imshow("Finger Count", frame_copy)
-        k = cv2.waitKey(1) & 0xFF
-        if k == 27:
-            break
+    # Process the frame to detect hands
+    results = hands.process(frame_rgb)
 
-    cam.release()
-    cv2.destroyAllWindows()
+    # Check if hands are detected
+    if results.multi_hand_landmarks:
+        for hand_landmarks in results.multi_hand_landmarks:
+            # Draw landmarks on the frame
+            mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
 
+            # Get frame dimensions
+            frame_height, frame_width, _ = frame.shape
 
-if __name__ == "__main__":
-    real_time_feed()
+            # Count fingers
+            finger_count = count_fingers(hand_landmarks, frame_width, frame_height)
+
+            # Display finger count
+            cv2.putText(frame, "Finger Count: " + str(finger_count), (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0),
+                        2, cv2.LINE_AA)
+
+    # Display the frame with hand landmarks
+    cv2.imshow('Hand Recognition', frame)
+
+    # Exit when 'q' is pressed
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+# Release the video capture object and close the OpenCV windows
+cap.release()
+cv2.destroyAllWindows()
